@@ -9,19 +9,19 @@ CREATE PROCEDURE AddBonus(
     IN score INT
 )
 BEGIN
-    DECLARE proj_id INT;
+    DECLARE project_id INT;
     
-    SELECT id INTO proj_id
+    SELECT id INTO project_id
     FROM projects 
     WHERE name = project_name;
     
-    IF proj_id IS NULL THEN
+    IF project_id IS NULL THEN
         INSERT INTO projects (name) VALUES (project_name);
-        SET proj_id = LAST_INSERT_ID();
+        SET project_id = LAST_INSERT_ID();
     END IF;
     
     INSERT INTO corrections (user_id, project_id, score)
-    VALUES (user_id, proj_id, score);
+    VALUES (user_id, project_id, score);
 END $$
 
 DELIMITER ;
