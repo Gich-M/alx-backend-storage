@@ -9,10 +9,10 @@ RETURNS FLOAT DETERMINISTIC
 BEGIN
     DECLARE result FLOAT DEFAULT 0;
     
-    IF b != 0 THEN
-        SET result = a / b;
+    IF b = 0 THEN
+        RETURN 0;
     END IF;
-    RETURN result;
+    RETURN a / b;
 END $$
 
 DELIMITER ;
