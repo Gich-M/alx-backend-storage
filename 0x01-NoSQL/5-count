@@ -1,0 +1,3 @@
+// Display number of documnets in a collection
+db.school.count()
+
