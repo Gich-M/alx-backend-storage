@@ -84,7 +84,6 @@ def replay(method: Callable) -> None:
             mthd_output,
         ))
 
-
 class Cache:
     """
     A class to store and retrieve data using Redis.
