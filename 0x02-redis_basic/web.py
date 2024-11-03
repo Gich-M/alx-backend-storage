@@ -1,51 +1,38 @@
 #!/usr/bin/env python3
-"""A module for implementing a web page caching system using Redis.
-"""
+'''A module with tools for request caching and tracking.
+'''
 import redis
 import requests
 from functools import wraps
 from typing import Callable
 
 
-def count_calls(method: Callable) -> Callable:
-    """Decorator to track the number of calls to a URL.
-    """
-    @wraps(method)
-    def wrapper(url):
-        """Wrapper function that maintains the count.
-        """
-        client = redis.Redis()
-        client.incr(f"count:{url}")
-        return method(url)
-    return wrapper
+redis_store = redis.Redis()
+'''The module-level Redis instance.
+'''
 
 
-def cache_page(method: Callable) -> Callable:
-    """Decorator to cache page content with expiration.
-    """
+def data_cacher(method: Callable) -> Callable:
+    '''Caches the output of fetched data.
+    '''
     @wraps(method)
-    def wrapper(url):
-        """Wrapper function that implements caching.
-        """
-        client = redis.Redis()
-        cached = client.get(f"cached:{url}")
-        if cached:
-            return cached.decode('utf-8')
+    def invoker(url) -> str:
+        '''The wrapper function for caching the output.
+        '''
+        redis_store.incr(f'count:{url}')
+        result = redis_store.get(f'result:{url}')
+        if result:
+            return result.decode('utf-8')
         result = method(url)
-        client.setex(f"cached:{url}", 10, result)
+        redis_store.set(f'count:{url}', 0)
+        redis_store.setex(f'result:{url}', 10, result)
         return result
-    return wrapper
+    return invoker
 
 
-@count_calls
-@cache_page
+@data_cacher
 def get_page(url: str) -> str:
-    """Fetches a page and caches the result with expiration.
-
-    Args:
-        url (str): The URL to fetch
-
-    Returns:
-        str: The content of the URL
-    """
+    '''Returns the content of a URL after caching the request's response,
+    and tracking the request.
+    '''
     return requests.get(url).text
