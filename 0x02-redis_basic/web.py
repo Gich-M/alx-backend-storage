@@ -21,7 +21,7 @@ def data_cacher(method: Callable) -> Callable:
         """
         redis_store.incr(f"count:{url}")
         result = redis_store.get(f"result:{url}")
-        
+
         if result:
             return result.decode('utf-8')
 
