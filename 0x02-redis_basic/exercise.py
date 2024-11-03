@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+"""
+Module for Redis-based NoSQL Database."""
 from uuid import uuid4
 from typing import Union, Any, Callable, Optional
 from functools import wraps
