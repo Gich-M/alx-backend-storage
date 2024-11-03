@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A module with tools for request caching and tracking.
+"""A module for implementing a web page caching system using Redis.
 """
 import redis
 import requests
@@ -7,34 +7,45 @@ from functools import wraps
 from typing import Callable
 
 
-redis_store = redis.Redis()
-"""The module-level Redis instance.
-"""
-
-
-def data_cacher(method: Callable) -> Callable:
-    """Caches the output of fetched data.
+def count_calls(method: Callable) -> Callable:
+    """Decorator to track the number of calls to a URL.
     """
     @wraps(method)
-    def wrapper(url) -> str:
-        """The wrapper function for caching the output.
+    def wrapper(url):
+        """Wrapper function that maintains the count.
         """
-        redis_store.incr(f"count:{url}")
-        result = redis_store.get(f"result:{url}")
+        client = redis.Redis()
+        client.incr(f"count:{url}")
+        return method(url)
+    return wrapper
 
-        if result:
-            return result.decode('utf-8')
 
+def cache_page(method: Callable) -> Callable:
+    """Decorator to cache page content with expiration.
+    """
+    @wraps(method)
+    def wrapper(url):
+        """Wrapper function that implements caching.
+        """
+        client = redis.Redis()
+        cached = client.get(f"cached:{url}")
+        if cached:
+            return cached.decode('utf-8')
         result = method(url)
-        redis_store.setex(f"result:{url}", 10, result)
-
+        client.setex(f"cached:{url}", 10, result)
         return result
     return wrapper
 
 
-@data_cacher
+@count_calls
+@cache_page
 def get_page(url: str) -> str:
-    """Returns the content of a URL after caching the request's response,
-    and tracking the request.
+    """Fetches a page and caches the result with expiration.
+
+    Args:
+        url (str): The URL to fetch
+
+    Returns:
+        str: The content of the URL
     """
     return requests.get(url).text
