@@ -40,13 +40,14 @@ def call_history(method: Callable) -> Callable:
     """
     @wraps(method)
     def wrapper(self, *args, **kwargs):
-        input_list_key = f"{method.__qualname__}:inputs"
-        output_list_key = f"{method.__qualname__}:outputs"
+        input_key = f"{method.__qualname__}:inputs"
+        output_key = f"{method.__qualname__}:outputs"
 
-        self._redis.rpush(input_list_key, str(args))
+        if isinstance(self._redis, redis.Redis):
+            self._redis.rpush(input_key, str(args))
         output = method(self, *args, **kwargs)
-        self._redis.rpush(output_list_key, str(output))
-
+        if isinstance(self._redis, redis.Redis):
+            self._redis.rpush(output_key, str(output))
         return output
     return wrapper
 
@@ -58,21 +59,27 @@ def replay(method: Callable) -> None:
     Args:
         method: The method to display history for
     """
-    redis_instance = method.__self__._redis
+    if method is None or not hasattr(method, '__self__'):
+        return
 
-    method_name = method.__qualname__
-
-    calls_count = int(redis_instance.get(method_name) or 0)
-
-    print(f"{method_name} was called {calls_count} times:")
-
-    inputs = redis_instance.lrange(f"{method_name}:inputs", 0, -1)
-    outputs = redis_instance.lrange(f"{method_name}:outputs", 0, -1)
-
-    for input_data, output_data in zip(inputs, outputs):
-        input_str = input_data.decode('utf-8')
-        output_str = output_data.decode('utf-8')
-        print(f"{method_name}{input_str} -> {output_str}")
+    redis_store = getattr(method.__self__, '_redis', None)
+    if not isinstance(redis_store, redis.Redis):
+        return
+    mthd_name = method.__qualname__
+    in_key = '{}:inputs'.format(mthd_name)
+    out_key = '{}:outputs'.format(mthd_name)
+    fxn_call_count = 0
+    if redis_store.exists(mthd_name) != 0:
+        fxn_call_count = int(redis_store.get(mthd_name))
+    print('{} was called {} times:'.format(mthd_name, fxn_call_count))
+    mthd_inputs = redis_store.lrange(in_key, 0, -1)
+    mthd_outputs = redis_store.lrange(out_key, 0, -1)
+    for mthd_inputs, mthd_output in zip(mthd_inputs, mthd_outputs):
+        print('{}(*{}) -> {}'.format(
+            mthd_name,
+            mthd_inputs.decode("utf-8"),
+            mthd_output,
+        ))
 
 
 class Cache:
